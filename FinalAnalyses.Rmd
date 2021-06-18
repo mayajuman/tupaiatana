@@ -1,0 +1,454 @@
+---
+title: "*T. tana* Analyses for Thesis"
+author: "Maya Juman"
+date: "March 8, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+#load relevant packages
+library(PerformanceAnalytics)
+library(ggplot2)
+library(ggfortify)
+library(MASS)
+library(lme4)
+library(car)
+
+#custom color palette bc defaults are ugly
+cbp2 <- c("black", "white", "cyan", "chartreuse", "firebrick1", "darkviolet", "gold", "forestgreen", "lightpink", "burlywood4", "darkorange", "blue", "magenta")
+```
+
+
+```{r}
+#set up data
+setwd("~/Desktop/thesis/complete data")
+x <- read.csv("manus.csv")
+x <- x[,-23]
+y <- read.csv("cran.csv")
+
+#scaling by CPL
+yCPL <- y
+yCPL <- yCPL[!(is.na(yCPL$CPL)),]
+
+for (j in 1:169) {
+  for (i in 10:27) {
+  yCPL[j,i] <- (yCPL[j,i])/(yCPL$CPL[j])
+} 
+} 
+
+yCPL <- na.omit(yCPL[,-c(9:11,14,17:20,23,26,27)])
+
+x[,7:22] <- log(x[,7:22])
+y[,9:27] <- log(y[,9:27])
+
+x <- x[,colSums(is.na(x)) < 20]
+x <- na.omit(x)
+
+y <- y[,colSums(is.na(y)) < 20]
+y <- na.omit(y)
+```
+
+##All Subspecies PCAs
+
+###1. All Subspecies PCA (Manus)
+
+```{r}
+pc1 <- princomp(x[,-(1:6)], cor=TRUE)
+for (i in 1:8) {
+  pc1$loadings[,i] <- (pc1$loadings[,i] * pc1$sdev[i])
+}
+print(summary(pc1),digits=4,loadings=pc1$loadings,cutoff=0)
+autoplot(pc1, data = x, colour = 'Subspecies', label = FALSE, label.size = 3) + scale_color_manual(values = cbp2) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (50.66%)") + ylab("PC2 (15.35%)")
+autoplot(pc1, data = x, colour = 'Locality', label = FALSE, 
+         label.size = 3, frame = TRUE) + xlab("PC1 (50.66%)") + ylab("PC2 (15.35%)")
+round(pc1$sdev^2,2)
+```
+
+###2. All Subspecies PCA (Skull)
+
+```{r}
+pc2 <- princomp(y[,-(1:8)], cor=TRUE)
+for (i in 1:8) {
+  pc2$loadings[,i] <- (pc2$loadings[,i] * pc2$sdev[i])
+}
+print(summary(pc2),digits=2,loadings=pc2$loadings,cutoff=0)
+autoplot(pc2, data = y, colour = 'Subspecies', label = FALSE, label.size = 3) + scale_color_manual(values = cbp2) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (65.58%)") + ylab("PC2 (13.92%)")
+autoplot(pc2, data = y, colour = 'Locality', label = FALSE, 
+         label.size = 3, frame = TRUE) + xlab("PC1 (65.58%)") + ylab("PC2 (13.92%)") + ggtitle("Original skull PCA with all individuals")
+round(pc2$sdev^2,2)
+```
+
+```{r}
+#scaling with CPL
+pc2cpl <- princomp(yCPL[,-(1:8)], cor=TRUE)
+for (i in 1:8) {
+  pc2cpl$loadings[,i] <- (pc2cpl$loadings[,i] * pc2cpl$sdev[i])
+}
+print(summary(pc2cpl),digits=2,loadings=pc2cpl$loadings,cutoff=0)
+autoplot(pc2cpl, data = yCPL, colour = 'Subspecies', label = FALSE, label.size = 3) + scale_color_manual(values = cbp2) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (29.21%)") + ylab("PC2 (25.71%)")
+autoplot(pc2cpl, data = yCPL, colour = 'Locality', label = FALSE, 
+         label.size = 3, frame = TRUE) + xlab("PC1 (29.21%)") + ylab("PC2 (25.71%)") + ggtitle("Skull PCA with all individuals, scaled with CPL")
+round(pc2cpl$sdev^2,2)
+```
+
+
+##Mainland Borneo PCAs
+
+###3. Mainland Borneo PCA (Manus)
+
+```{r}
+bornX <- x[which(x$Locality == 'Mainland Borneo'),]
+pc3 <- princomp(bornX[,-(1:6)], cor=TRUE)
+for (i in 1:8) {
+  pc3$loadings[,i] <- (pc3$loadings[,i] * pc3$sdev[i])
+}
+print(summary(pc3),digits=2,loadings=pc3$loadings,cutoff=0)
+round(pc3$sdev^2,2)
+
+autoplot(pc3, data = bornX, colour = 'Subspecies', label = FALSE, label.size = 3) + scale_color_manual(values = cbp2) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (54.63%)") + ylab("PC2 (12.56%)")
+
+autoplot(pc3, data = bornX, colour = 'Subspecies', label = FALSE, label.size = 3, frame = TRUE) + xlab("PC1 (54.63%)") + ylab("PC2 (12.56%)")
+
+#table(bornX$Subspecies)
+```
+
+###4. Mainland Borneo PCA (Skull)
+
+```{r}
+bornY <- y[which(y$Locality == 'Mainland Borneo'),]
+pc4 <- princomp(bornY[,-(1:8)], cor=TRUE)
+for (i in 1:8) {
+  pc4$loadings[,i] <- (pc4$loadings[,i] * pc4$sdev[i])
+}
+print(summary(pc4),digits=2,loadings=pc4$loadings,cutoff=0)
+round(pc4$sdev^2,2)
+
+autoplot(pc4, data = bornY, colour = 'Subspecies', label = FALSE, label.size = 3) + scale_color_manual(values = cbp2) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (58.52%)") + ylab("PC2 (17.50%)")
+
+autoplot(pc4, data = bornY, colour = 'Subspecies', label = FALSE, label.size = 3, frame = TRUE) + xlab("PC1 (58.52%)") + ylab("PC2 (17.50%)")
+```
+
+##Borneo vs. Sumatra *T. t. tana* DFAs
+
+###5. Borneo vs. Sumatra *T. t. tana* DFA (Manus)
+
+```{r}
+tanaX <- x[which(x$Subspecies == 'T. t. tana'),]
+
+tanaX$Locality <- droplevels(tanaX$Locality)
+
+lin <- lda(tanaX[,-c(1:6)],grouping=tanaX$Locality)
+ctraw <- table(tanaX$Locality, predict(lin)$class)
+ctraw #rows are actual count and columns are predicted count; ignore blank I column/row
+
+# total percent correct
+round(sum(diag(prop.table(ctraw))),4)
+
+table(tanaX$Locality)
+```
+
+###6. Borneo vs. Sumatra *T. t. tana* DFA (Skull)
+
+```{r}
+tanaY <- y[which(y$Subspecies == 'T. t. tana'),]
+
+tanaY$Locality <- droplevels(tanaY$Locality)
+
+table(tanaY$Locality)
+
+lin2 <- lda(tanaY[,-c(1:8)],grouping=tanaY$Locality)
+ctraw2 <- table(tanaY$Locality, predict(lin2)$class)
+ctraw2 #rows are actual count and columns are predicted count; ignore blank I column/row
+
+# total percent correct
+round(sum(diag(prop.table(ctraw2))),4)
+```
+
+##Mainland Borneo vs. Islands PCAs
+
+###7. Mainland Borneo vs. Islands PCA (Manus, with offshore islands forced in)
+
+```{r}
+setwd("~/Desktop/thesis/complete data")
+bornIx2 <- read.csv("manus_islandsB.csv")
+bornIx2 <- na.omit(bornIx2)
+bornIx2[,7:13] <- log(bornIx2[,7:13])
+
+table(bornIx2$Locality)
+
+pc11 <- princomp(bornIx2[,-(1:6)], cor=TRUE)
+for (i in 1:7) {
+  pc11$loadings[,i] <- (pc11$loadings[,i] * pc11$sdev[i])
+}
+
+print(summary(pc11),digits=2,loadings=pc11$loadings,cutoff=0)
+round(pc11$sdev^2,2)
+
+autoplot(pc11, data = bornIx2, colour = 'Locality', label = FALSE, label.size = 3) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (58.71%)") + ylab("PC2 (12.70%)")
+
+autoplot(pc11, data = bornIx2, colour = 'Locality', label = FALSE, label.size = 3, frame = TRUE) + xlab("PC1 (58.71%)") + ylab("PC2 (12.70%)")
+```
+
+###8. Mainland Borneo vs. Islands PCA (Skull, with offshore islands forced in)
+
+```{r}
+bornIy <- y[which(!y$Locality == 'Mainland Sumatra'),]
+bornIy <- bornIy[which(!bornIy$Subspecies == 'T. t. cervicalis'),]
+
+table(bornIy$Locality)
+
+pc6 <- princomp(bornIy[,-(1:8)], cor=TRUE)
+for (i in 1:8) {
+  pc6$loadings[,i] <- (pc6$loadings[,i] * pc6$sdev[i])
+}
+print(summary(pc6),digits=2,loadings=pc6$loadings,cutoff=0)
+round(pc6$sdev^2,2)
+
+autoplot(pc6, data = bornIy, colour = 'Locality', label = FALSE, label.size = 3) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (62.51%)") + ylab("PC2 (14.62%)")
+
+autoplot(pc6, data = bornIy, colour = 'Locality', label = FALSE, label.size = 3, frame = TRUE) + xlab("PC1 (62.51%)") + ylab("PC2 (14.62%)")
+```
+
+##Mainland Sumatra vs. Islands PCAs
+
+###9. Mainland Sumatra vs. Islands PCA (Manus, with offshore islands forced in)
+
+```{r}
+setwd("~/Desktop/thesis/complete data")
+sumIx2 <- read.csv("manus_islandsS.csv")
+sumIx2 <- na.omit(sumIx2)
+sumIx2[,7:13] <- log(sumIx2[,7:13])
+
+table(sumIx2$Subspecies)
+
+pc9 <- princomp(sumIx2[,-(1:6)], cor=TRUE)
+for (i in 1:7) {
+  pc9$loadings[,i] <- (pc9$loadings[,i] * pc9$sdev[i])
+}
+print(summary(pc9),digits=2,loadings=pc9$loadings,cutoff=0)
+round(pc9$sdev^2,2)
+
+autoplot(pc9, data = sumIx2, colour = 'Locality', label = FALSE, label.size = 3) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (40.33%)") + ylab("PC2 (24.56%)")
+
+autoplot(pc9, data = sumIx2, colour = 'Locality', label = FALSE, label.size = 3, frame = TRUE) + xlab("PC1 (40.33%)") + ylab("PC2 (24.56%)")
+```
+
+```{r}
+#THIS IS WEIRD LEAVE THIS ONE OUT
+setwd("~/Desktop/thesis/complete data")
+sumIx22 <- read.csv("manus_islandsS2.csv")
+sumIx2[,5:11] <- log(sumIx2[,5:11])
+
+pc55 <- princomp(sumIx22[,-(1:4)], cor=TRUE)
+
+for (i in 1:7) {
+  pc55$loadings[,i] <- (pc55$loadings[,i] * pc55$sdev[i])
+}
+
+#print(summary(pc55),digits=2,loadings=pc55$loadings,cutoff=0)
+#round(pc55$sdev^2,2)
+
+#autoplot(pc55, data = sumIx22, colour = 'Locality', label = FALSE, label.size = 3) + geom_point(shape = 1, size = 2, colour = "black") 
+#+ xlab("PC1 (40.33%)") + ylab("PC2 (24.56%)")
+
+#autoplot(pc55, data = sumIx22, colour = 'Locality', label = FALSE, label.size = 3, frame = TRUE) 
+#+ xlab("PC1 (40.33%)") + ylab("PC2 (24.56%)")
+```
+
+
+###10. Mainland Sumatra vs. Islands PCA (Skull, with offshore islands forced in)
+
+```{r}
+setwd("~/Desktop/thesis/complete data")
+sumIy2 <- read.csv("cran_islandsS.csv")
+sumIy2 <- na.omit(sumIy2)
+sumIy2[,9:16] <- log(sumIy2[,9:16])
+
+table(sumIy2$Subspecies)
+
+pc10 <- princomp(sumIy2[,-(1:8)], cor=TRUE)
+
+for (i in 1:8) {
+  pc10$loadings[,i] <- (pc10$loadings[,i] * pc10$sdev[i])
+}
+
+print(summary(pc10),digits=2,loadings=pc10$loadings,cutoff=0)
+round(pc10$sdev^2,2)
+
+autoplot(pc10, data = sumIy2, colour = 'Locality', label = FALSE, label.size = 3) + geom_point(shape = 1, size = 2, colour = "black") + xlab("PC1 (48.87%)") + ylab("PC2 (17.02%)")
+
+autoplot(pc10, data = sumIy2, colour = 'Locality', label = FALSE, label.size = 3, frame = TRUE) + xlab("PC1 (48.87%)") + ylab("PC2 (17.02%)")
+```
+
+##Mixed-Effect Models for PC1 and Latitude
+
+###11. PC1 vs. Latitude (Manus)
+
+```{r}
+xpc1 <- pc1[["scores"]]
+xpc1 <- xpc1[,1]
+x$PC1 <- xpc1
+ggplot(x, aes(y=PC1, x=lat)) + geom_point(aes(color = Locality)) + xlab("Latitude")
+memx <- lmer(PC1 ~ lat + Locality + (1 | long), data = x, REML = FALSE)
+summary(memx)
+Anova(memx) 
+```
+
+###12. PC1 vs. Latitude (Skull)
+
+```{r}
+ypc1 <- pc2[["scores"]]
+ypc1 <- ypc1[,1]
+y$PC1 <- ypc1
+ggplot(y, aes(y=PC1, x=lat)) + geom_point(aes(color = Locality)) + xlab("Latitude")
+memy <- lmer(PC1 ~ lat + Locality + Sex + (1 | long), data = y, REML = FALSE)
+summary(memy)
+Anova(memy)
+```
+
+###13. PC1 vs. *Absolute value* of Latitude (Manus)
+
+```{r}
+x$abslat <- abs(x$lat)
+ggplot(x, aes(y=PC1, x=abslat)) + geom_point(aes(color = Locality)) + xlab("Latitude")
+memx2 <- lmer(PC1 ~ abslat + Locality + (1 | long), data = x, REML = FALSE)
+summary(memx2)
+Anova(memx2)
+```
+
+###14. PC1 vs. *Absolute value* of Latitude (Skull)
+
+```{r}
+y$abslat <- abs(y$lat)
+ggplot(y, aes(y=PC1, x=abslat)) + geom_point(aes(color = Locality)) + xlab("Latitude")
+memy2 <- lmer(PC1 ~ abslat + Locality + Sex + (1 | long), data = y, REML = FALSE)
+summary(memy2)
+Anova(memy2)
+```
+
+##Sexual Size Dimorphism
+
+###DFA
+
+```{r}
+sex <- y[which(!y$Sex == 'sex unknown'),]
+sex <- sex[which(!sex$Sex == ''),]
+sex <- sex[which(!sex$Subspecies == 'kelabit'),]
+sex$Sex <- droplevels(sex$Sex)
+lin3 <- lda(sex[,-c(1:8, 17, 18)],grouping=sex$Sex)
+ctraw3 <- table(sex$Sex, predict(lin3)$class)
+ctraw3 #rows are actual count and columns are predicted count; ignore blank I column/row
+
+# total percent correct
+round(sum(diag(prop.table(ctraw3))),4)
+
+table(sex$Sex)
+```
+
+```{r}
+sexS <- sex[which(sex$Locality == 'Mainland Sumatra'),]
+sexB <- sex[which(sex$Locality == 'Mainland Borneo'),]
+
+table(sexS$Sex)
+table(sexB$Sex)
+
+linS <- lda(sexS[,-(1:8)],grouping=sexS$Sex)
+ctrawS <- table(sexS$Sex, predict(linS)$class)
+ctrawS #rows are actual count and columns are predicted count; ignore blank I column/row
+
+# total percent correct
+round(sum(diag(prop.table(ctrawS))),4)
+
+linB <- lda(sexB[,-(1:8)],grouping=sexB$Sex)
+ctrawB <- table(sexB$Sex, predict(linB)$class)
+ctrawB #rows are actual count and columns are predicted count; ignore blank I column/row
+
+# total percent correct
+round(sum(diag(prop.table(ctrawB))),4)
+```
+
+###t-test on PC1 by island
+
+```{r}
+pcs <- princomp(sexS[,-(1:8)], cor=TRUE)
+for (i in 1:8) {
+  pcs$loadings[,i] <- (pcs$loadings[,i] * pcs$sdev[i])
+}
+print(summary(pcs),digits=4,loadings=pcs$loadings,cutoff=0)
+sexS$PC1 <- pcs[["scores"]][,1]
+
+autoplot(pcs, data = sexS, colour = 'Sex', label = FALSE, label.size = 3) + ggtitle("sumatra")
+
+pcb <- princomp(sexB[,-(1:8)], cor=TRUE)
+for (i in 1:8) {
+  pcb$loadings[,i] <- (pcb$loadings[,i] * pcb$sdev[i])
+}
+print(summary(pcb),digits=4,loadings=pcb$loadings,cutoff=0)
+sexB$PC1 <- pcb[["scores"]][,1]
+
+autoplot(pcb, data = sexB, colour = 'Sex', label = FALSE, label.size = 3) + ggtitle("borneo")
+
+t.test(PC1 ~ Sex, sexS)
+
+aovS <- aov(sexS$PC1 ~ sexS$Sex)
+summary(aovS)
+
+t.test(PC1 ~ Sex, sexB)
+
+aovB <- aov(sexB$PC1 ~ sexB$Sex)
+summary(aovB)
+
+pcov <- princomp(sex[,-(1:8)], cor=TRUE)
+autoplot(pcov, data = sex, colour = 'Sex', label = FALSE, label.size = 3) + ggtitle("overall")
+```
+
+
+```{r}
+setwd("~/Desktop/thesis/complete data")
+cpl <- read.csv("cran.csv")
+cpl <- na.omit(cpl[,c(1:4,8,9)])
+cpl <- cpl[which(!cpl$Sex == 'sex unknown'),]
+t.test(CPL ~ Sex, cpl)
+
+cplB <- cpl[which(!cpl$Locality == 'Mainland Borneo'),]
+cplS <- cpl[which(!cpl$Locality == 'Mainland Sumatra'),]
+
+t.test(CPL ~ Sex, cplB)
+t.test(CPL ~ Sex, cplS)
+```
+
+###t-test on PC1
+
+```{r}
+t.test(PC1 ~ Sex, sex)
+```
+
+###MANOVA on all variables
+
+```{r}
+#check multivariate normality: get online function
+source("http://www.reuningscherer.net/STAT660/R/CSQPlot.r.txt")
+
+for (i in 1:nlevels(sex$Sex)){
+  CSQPlot(sex[sex$Sex == levels(sex$Sex)[i], c(9:16)],label= levels(sex$Sex)[i])
+}
+
+#satisfies this assumption for MANOVA!
+```
+
+```{r}
+responsevar <- as.numeric(sex[,8])
+for (i in 9:16) responsevar <- cbind(responsevar,as.numeric(sex[,i]))
+```
+
+```{r}
+surveyaov <- manova(responsevar ~ sex$Sex)
+summary.aov(surveyaov)
+#summary.manova(surveyaov, tol=0)   #Default is Pillai's trace
+#summary.manova(surveyaov,test="Wilks", tol=0)
+#summary.manova(surveyaov,test="Roy", tol=0)
+```

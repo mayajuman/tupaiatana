@@ -1,0 +1,272 @@
+---
+title: "b&w figs"
+author: "Maya Juman"
+date: "May 8, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+#load relevant packages
+library(ggplot2)
+library(ggfortify)
+library(plyr)
+library(gridExtra)
+```
+
+```{r}
+#set up data
+setwd("~/Desktop/thesis/complete data")
+x <- read.csv("manus.csv")
+y <- read.csv("cran.csv")
+x[,7:22] <- log(x[,7:22])
+y[,9:27] <- log(y[,9:27])
+
+x <- x[,colSums(is.na(x)) < 20]
+x <- na.omit(x)
+x <- x[,-15]
+
+y <- y[,colSums(is.na(y)) < 20]
+y <- na.omit(y)
+
+m <- c("grey90", "grey60", "black")
+n <- c("grey80", "black")
+```
+
+##1. MAP
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+library("rnaturalearth")
+library("rnaturalearthdata")
+library("ggspatial")
+citation(package = "ggplot2")
+world <- ne_countries(scale = "medium", returnclass = "sf")
+setwd("~/Desktop/thesis/gis")
+sites <- read.csv("R_locdata.csv")
+sites <- sites[-c(6,87:89),]
+tsites <- read.csv("GIS_types.csv")
+tsites <- tsites[-12,]
+
+map <- ggplot(data = world) +
+    geom_sf() + 
+  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), panel.grid.major = element_line(colour = "transparent"), panel.border = element_rect(colour = "black", fill=NA, size=1)) +
+    geom_point(data = sites, aes(x = Longitude, y = Latitude, shape = subsp.), size = 3, fill = "black") + 
+  coord_sf(xlim = c(96,119), ylim = c(-6.5,9), expand = FALSE) + xlab("Longitude") + ylab("Latitude") + 
+  scale_shape_manual(values = c(21,24), 
+                     guide = guide_legend(label.theme = element_text(angle = 0, 
+                                                                     face = "italic", size=12))) + 
+  theme(legend.title = element_blank(), 
+        legend.box.background = element_rect(color="black", size=0.4)) + 
+  theme(legend.position = c(0.89,0.08),
+        legend.spacing.x = unit(1, 'mm'), legend.key.size = unit(5, 'mm'), legend.background = element_rect(color = "white", linetype = "solid", size=1)) +
+  annotation_scale(location = "bl", width_hint = 0.18) +
+    annotation_north_arrow(location = "bl", which_north = "true", 
+        pad_x = unit(0.5, "in"), pad_y = unit(0.3, "in"), 
+        height = unit(1, "cm"),
+        width = unit(1, "cm"),
+        style = north_arrow_fancy_orienteering)
+
+col <- c("blue", "cyan", "darkgoldenrod", "coral", "chartreuse", "lightseagreen", "gray", "snow", "forestgreen", "deeppink", "darkorchid1", "plum1", "yellow", "navajowhite", "firebrick1")
+
+theme_set(theme_bw())
+rmap <- ggplot(data = world) +
+    geom_sf() + 
+  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), panel.grid.major = element_line(colour = "transparent"), panel.border = element_rect(colour = "black", fill=NA, size=1)) +
+    geom_point(data = sites, aes(x = Longitude, y = Latitude, fill = subsp.), colour = "black", size = 2.5, shape = 21) + coord_sf(xlim = c(96,119), ylim = c(-6.5,9), expand = FALSE) + xlab("Longitude") + ylab("Latitude") + scale_fill_manual(values = col, guide = guide_legend(label.theme = element_text(angle = 0, face = "italic", size=12))) + theme(legend.title = element_blank(), 
+        legend.box.background = element_rect(color="black", size=0.4)) + 
+  theme(legend.position = "right",
+        legend.spacing.x = unit(1, 'mm'), legend.key.size = unit(5, 'mm'), legend.background = element_rect(color = "white", linetype = "solid", size=1)) + annotation_scale(location = "br", width_hint = 0.15) + geom_point(data = tsites, aes(x = Longitude, y = Latitude, shape = looked.at.it.), colour = "black", size = 1) + scale_shape_manual(values = c(17,20))
+
+
+#use ppt to format arrow, legend, 4 type labels, and 4 type stars
+ggsave(rmap,file="Fig.1rev2.tiff",width=200, height=120, units="mm", dpi=600)
+```
+
+###2. All Subspecies PCA (Manus)
+
+```{r}
+pc1 <- princomp(x[,-(1:6)], cor=TRUE)
+x1 <- x
+x1$pc1 <- pc1$scores[,1]
+x1$pc2 <- pc1$scores[,2]
+
+#2A
+a2 <- ggplot(data = x1, aes(x=pc1, y=pc2, group=Subspecies)) + geom_point(aes(shape=Subspecies), size=3) + scale_shape_manual(values = c(0,1,2,15,18,7,8,9,10,16,12), guide = guide_legend(label.theme = element_text(angle = 0, face = "italic", size=9))) + geom_vline(aes(xintercept = 0), size=0.25) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (50.66%)") + ylab("PC2 (15.35%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(legend.title = element_blank(), legend.box.background = element_rect(color="black", size=0.5)) + theme(text = element_text(size=13)) + xlim(-4.5,6.3) + ylim(-4.3,2.85) + theme(legend.position = c(0.825, 0.185), legend.spacing.x = unit(2.5, 'mm'), legend.key.size = unit(3, 'mm'))
+a2
+
+ggsave(a2, file="2a.jpg", width=120, height=120, units = "mm")
+
+find_hull <- function(x1) x1[chull(x1$pc1, x1$pc2), ]
+hulls <- ddply(x1, "Locality", find_hull)
+
+#2B
+b2 <- ggplot(data = x1, aes(x=pc1, y=pc2, group=Locality)) + 
+  geom_point(aes(shape=Locality), size=3) + 
+  scale_shape_manual(values = c(2,10,20)) + 
+  geom_vline(aes(xintercept = 0), size=0.25) + 
+  scale_linetype_manual(values=c(2,3,1)) + 
+  geom_hline(aes(yintercept = 0), size=0.25) + 
+  theme_bw() + 
+  xlab("PC1 (50.66%)") + ylab("PC2 (15.35%)") + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  scale_fill_manual(values=m) + 
+  geom_polygon(data=hulls, alpha=0.3, aes(x=pc1, y=pc2, group=Locality, 
+                                          fill=Locality, linetype=Locality), 
+               colour="black") + 
+  theme(legend.position = c(0.79, 0.11), legend.spacing.x = unit(2.5, 'mm'), 
+        legend.key.size = unit(6, 'mm')) + 
+  ylim(-4,3) + xlim(-4.5,6.9) + 
+  theme(legend.title = element_blank()) + 
+  theme(text = element_text(size=13))
+b2
+
+ggsave(b2,file="2b.jpg",width=120, height=120, units="mm")
+
+#grid.arrange(a2,b2,nrow=2)
+```
+
+###2C and 2D. All Subspecies PCA (Skull)
+
+```{r}
+pc2 <- princomp(y[,-(1:8)], cor=TRUE)
+y1 <- y
+y1$pc1 <- pc2$scores[,1]
+y1$pc2 <- pc2$scores[,2]
+
+#2C
+a3 <- ggplot(data = y1, aes(x=pc1, y=pc2, group=Subspecies)) + geom_point(aes(shape=Subspecies), size=3) + scale_shape_manual(values = c(0,1,2,15,17,5,18,7,8,9,10,12,11), guide = guide_legend(label.theme = element_text(angle = 0, face = "italic", size=9))) + geom_vline(aes(xintercept = 0), size=0.25) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (65.58%)") + ylab("PC2 (13.92%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(legend.title = element_blank()) + theme(text = element_text(size=13)) + theme(legend.position = c(0.825, 0.215), legend.spacing.x = unit(2.5, 'mm'), legend.key.size = unit(3, 'mm'), legend.box.background = element_rect(color="black", size=0.5)) + xlim(-6,9.5)
+a3
+
+ggsave(a3,file="3a.jpg",width=120, height=120, units="mm")
+
+find_hull2 <- function(y1) y1[chull(y1$pc1, y1$pc2), ]
+hulls2 <- ddply(y1, "Locality", find_hull2)
+
+#2D
+b3 <- ggplot(data = y1, aes(x=pc1, y=pc2, group=Locality)) + geom_point(aes(shape=Locality), size=3) + scale_shape_manual(values = c(2,10,20)) + geom_vline(aes(xintercept = 0), size=0.25) + scale_linetype_manual(values=c(2,3,1)) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (65.58%)") + ylab("PC2 (13.92%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + geom_polygon(data=hulls2, alpha=0.3, aes(x=pc1, y=pc2, group=Locality, linetype=Locality, fill=Locality), colour="black") + scale_fill_manual(values=m) + theme(legend.position = c(0.80, 0.11), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(6, 'mm')) + xlim(-6, 6.5) + ylim(-3.5,2.8) + theme(legend.title = element_blank()) + theme(text = element_text(size=13))
+b3
+
+ggsave(b3,file="3b.jpg",width=120, height=120, units="mm")
+```
+
+###3A. Mainland Borneo PCA (Manus)
+
+```{r}
+bornX <- x[which(x$Locality == 'Mainland Borneo'),]
+pc3 <- princomp(bornX[,-(1:6)], cor=TRUE)
+bornX1 <- bornX
+bornX1$pc1 <- pc3$scores[,1]
+bornX1$pc2 <- pc3$scores[,2]
+
+a4 <- ggplot(data = bornX1, aes(x=pc1, y=pc2, group=Subspecies)) + geom_point(aes(shape=Subspecies), size=3) + scale_shape_manual(values = c(0,1,18,7,8,10,12), guide = guide_legend(label.theme = element_text(angle = 0, face = "italic", size=9))) + geom_vline(aes(xintercept = 0), size=0.25) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (54.63%)") + ylab("PC2 (12.56%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(legend.title = element_blank()) + theme(text = element_text(size=13)) + xlim(-4.6,6.4) + theme(legend.position = c(0.868, 0.8475), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(4, 'mm'), legend.box.background = element_rect(color="black", size=0.5))
+a4
+
+ggsave(a4,file="4a.jpg",width=120, height=120, units="mm")
+```
+
+###3B. Mainland Borneo PCA (Skull)
+
+```{r}
+bornY <- y[which(y$Locality == 'Mainland Borneo'),]
+pc4 <- princomp(bornY[,-(1:8)], cor=TRUE)
+bornY1 <- bornY
+bornY1$pc1 <- pc4$scores[,1]
+bornY1$pc2 <- pc4$scores[,2]
+
+b4 <- ggplot(data = bornY1, aes(x=pc1, y=pc2, group=Subspecies)) + geom_point(aes(shape=Subspecies), size=3) + scale_shape_manual(values = c(1,17,5,18,7,8,10,12,11), guide = guide_legend(label.theme = element_text(angle = 0, face = "italic", size=9))) + geom_vline(aes(xintercept = 0), size=0.25) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (58.52%)") + ylab("PC2 (17.50%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(legend.title = element_blank()) + theme(text = element_text(size=13)) + theme(legend.position = c(0.8665, 0.169), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(3.5, 'mm'), legend.box.background = element_rect(color="black", size=0.5)) + xlim(-5.2,6.3)
+b4
+
+ggsave(b4,file="4b.jpg",width=120, height=120, units="mm")
+```
+
+###4A. Mainland Borneo vs. Islands PCA (Manus, with offshore islands forced in)
+
+```{r}
+setwd("~/Desktop/thesis/complete data")
+bornIx2 <- read.csv("manus_islandsB.csv")
+bornIx2 <- na.omit(bornIx2)
+bornIx2[,7:13] <- log(bornIx2[,7:13])
+pc11 <- princomp(bornIx2[,-(1:6)], cor=TRUE)
+bx1 <- bornIx2
+bx1$pc1 <- pc11$scores[,1]
+bx1$pc2 <- pc11$scores[,2]
+
+find_hull3 <- function(bx1) bx1[chull(bx1$pc1, bx1$pc2), ]
+hulls3 <- ddply(bx1, "Locality", find_hull3)
+
+a5 <- ggplot(data = bx1, aes(x=pc1, y=pc2, group=Locality)) + geom_point(aes(shape=Locality), size=3) + scale_shape_manual(values = c(2,20)) + geom_vline(aes(xintercept = 0), size=0.25) + scale_linetype_manual(values=c(2,1)) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (58.71%)") + ylab("PC2 (12.70%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + geom_polygon(data=hulls3, alpha=0.3, aes(x=pc1, y=pc2, group=Locality, linetype=Locality, fill=Locality), colour="black") + scale_fill_manual(values=n) + theme(legend.position = c(0.81, 0.08))  + xlim(-3.7, 4.55) + ylim(-2.2, 2.3) + theme(legend.title = element_blank(), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(6, 'mm')) + theme(text = element_text(size=13))
+a5
+
+ggsave(a5,file="5a.jpg",width=120, height=120, units="mm")
+```
+
+###4B. Mainland Borneo vs. Islands PCA (Skull, with offshore islands forced in)
+
+```{r}
+bornIy <- y[which(!y$Locality == 'Mainland Sumatra'),]
+bornIy <- bornIy[which(!bornIy$Subspecies == 'cervicalis'),]
+pc6 <- princomp(bornIy[,-(1:8)], cor=TRUE)
+by1 <- bornIy
+by1$pc1 <- pc6$scores[,1]
+by1$pc2 <- pc6$scores[,2]
+
+find_hull4 <- function(by1) by1[chull(by1$pc1, by1$pc2), ]
+hulls4 <- ddply(by1, "Locality", find_hull4)
+
+b5 <- ggplot(data = by1, aes(x=pc1, y=pc2, group=Locality)) + geom_point(aes(shape=Locality), size=3) + scale_shape_manual(values = c(2,20)) + geom_vline(aes(xintercept = 0), size=0.25) + scale_linetype_manual(values=c(2,1)) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (62.51%)") + ylab("PC2 (14.62%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + geom_polygon(data=hulls4, alpha=0.3, aes(x=pc1, y=pc2, group=Locality, linetype=Locality, fill=Locality), colour="black") + scale_fill_manual(values=n) + theme(legend.position = c(0.81, 0.08)) + xlim(-5.5, 6.2) + ylim(-3.2, 2.4) + theme(legend.title = element_blank(), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(6, 'mm')) + theme(text = element_text(size=13))
+b5
+
+ggsave(b5,file="5b.jpg",width=120, height=120, units="mm")
+```
+
+###4C. Mainland Sumatra vs. Islands PCA (Manus, with offshore islands forced in)
+
+```{r}
+setwd("~/Desktop/thesis/complete data")
+sumIx2 <- read.csv("manus_islandsS.csv")
+sumIx2 <- na.omit(sumIx2)
+sumIx2[,7:13] <- log(sumIx2[,7:13])
+pc9 <- princomp(sumIx2[,-(1:6)], cor=TRUE)
+sx1 <- sumIx2
+sx1$pc1 <- pc9$scores[,1]
+sx1$pc2 <- pc9$scores[,2]
+
+find_hull5 <- function(sx1) sx1[chull(sx1$pc1, sx1$pc2), ]
+hulls5 <- ddply(sx1, "Locality", find_hull5)
+
+#a6 <- ggplot(data = sx1, aes(x=pc1, y=pc2, group=Locality)) + geom_point(aes(shape=Locality), size=3) + scale_shape_manual(values = c(2,20)) + geom_vline(aes(xintercept = 0), size=0.25) + scale_linetype_manual(values=c(2,1)) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (40.33%)") + ylab("PC2 (24.56%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_fill_manual(values=n) + geom_polygon(data=hulls5, alpha=0.3, aes(x=pc1, y=pc2, group=Locality, linetype=Locality, fill=Locality), colour="black") + theme(legend.position = c(0.21, 0.09)) + theme(legend.title = element_blank(), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(6, 'mm')) + theme(text = element_text(size=13)) + xlim(-4, 4)
+
+a6 <- ggplot(data = sx1, aes(x=pc1, y=pc2, group=Locality)) + geom_point(aes(shape=Subspecies), fill="grey", size=4) + scale_shape_manual(values = c(18, 8, 5, 10)) + geom_vline(aes(xintercept = 0), size=0.25) + scale_linetype_manual(values=c(2,1)) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (40.33%)") + ylab("PC2 (24.56%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_fill_manual(values=n) + geom_polygon(data=hulls5, alpha=0.3, aes(x=pc1, y=pc2, group=Locality, linetype=Locality, fill=Locality), colour="black") + theme(legend.position = "none") + theme(legend.title = element_blank(), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(6, 'mm')) + theme(text = element_text(size=13)) + xlim(-4, 4)
+
+a6
+
+setwd("~/Desktop/thesis/figs")
+ggsave(a6,file="6areal.jpg",width=120, height=120, units="mm")
+```
+
+###4D. Mainland Sumatra vs. Islands PCA (Skull, with offshore islands forced in)
+
+```{r}
+setwd("~/Desktop/thesis/complete data")
+sumIy2 <- read.csv("cran_islandsS.csv")
+sumIy2 <- na.omit(sumIy2)
+sumIy2[,9:16] <- log(sumIy2[,9:16])
+pc10 <- princomp(sumIy2[,-(1:8)], cor=TRUE)
+sy1 <- sumIy2
+sy1$pc1 <- pc10$scores[,1]
+sy1$pc2 <- pc10$scores[,2]
+
+find_hull6 <- function(sy1) sy1[chull(sy1$pc1, sy1$pc2),]
+hulls6 <- ddply(sy1, "Locality", find_hull6)
+
+b6 <- ggplot(data = sy1, aes(x=pc1, y=pc2, group=Locality)) + geom_point(aes(shape=Locality), size=3) + scale_shape_manual(values = c(2,20)) + geom_vline(aes(xintercept = 0), size=0.25) + scale_linetype_manual(values=c(2,1)) + geom_hline(aes(yintercept = 0), size=0.25) + theme_bw() + xlab("PC1 (48.87%)") + ylab("PC2 (17.02%)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_fill_manual(values=n) + geom_polygon(data=hulls6, alpha=0.3, aes(x=pc1, y=pc2, group=Locality, linetype=Locality, fill=Locality), colour="black") + theme(legend.position = c(0.21, 0.09)) + xlim(-5, 5) + theme(legend.title = element_blank(), legend.spacing.x = unit(2, 'mm'), legend.key.size = unit(6, 'mm')) + theme(text = element_text(size=13))
+b6
+
+ggsave(b6,file="6br.jpg",width=120, height=120, units="mm")
+```
+
