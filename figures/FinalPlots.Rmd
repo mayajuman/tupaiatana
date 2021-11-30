@@ -39,12 +39,9 @@ n <- c("grey80", "black")
 ##1. MAP
 
 ```{r}
-library(ggplot2)
-library(ggfortify)
 library("rnaturalearth")
 library("rnaturalearthdata")
 library("ggspatial")
-citation(package = "ggplot2")
 world <- ne_countries(scale = "medium", returnclass = "sf")
 setwd("~/Desktop/thesis/gis")
 sites <- read.csv("R_locdata.csv")
@@ -83,7 +80,7 @@ rmap <- ggplot(data = world) +
         legend.spacing.x = unit(1, 'mm'), legend.key.size = unit(5, 'mm'), legend.background = element_rect(color = "white", linetype = "solid", size=1)) + annotation_scale(location = "br", width_hint = 0.15) + geom_point(data = tsites, aes(x = Longitude, y = Latitude, shape = looked.at.it.), colour = "black", size = 1) + scale_shape_manual(values = c(17,20))
 
 
-#use ppt to format arrow, legend, 4 type labels, and 4 type stars
+#use ppt or illustrator to format arrow, legend, 4 type labels, and 4 type stars
 ggsave(rmap,file="Fig.1rev2.tiff",width=200, height=120, units="mm", dpi=600)
 ```
 
